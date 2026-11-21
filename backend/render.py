@@ -55,12 +55,20 @@ class FxParams:
 
 
 def find_soundfont() -> Path:
+    """Use PIANO_SF2 if set, else the biggest .sf2 in soundfonts/ or in common system folders."""
     env = os.environ.get("PIANO_SF2")
     if env and Path(env).exists():
         return Path(env)
-    cands = sorted(SF_DIR.glob("*.sf2"), key=lambda p: p.stat().st_size, reverse=True)
+    cands: list[Path] = []
+    for d in (SF_DIR, Path("/usr/share/sounds/sf2"), Path("/usr/share/soundfonts"), Path("/usr/share/sounds/sf3")):
+        if d.exists():
+            cands += [p for p in d.glob("*.sf2") if p.is_file()]
+    cands = sorted(set(cands), key=lambda p: p.stat().st_size, reverse=True)
     if not cands:
-        raise RuntimeError("No .sf2 SoundFont found in soundfonts/. Add a piano SoundFont there.")
+        raise RuntimeError(
+            "No piano SoundFont (.sf2) was found on the server. Add 'timgm6mb-soundfont' to the Dockerfile's "
+            "apt-get install line, or put a .sf2 file in a 'soundfonts' folder."
+        )
     return cands[0]
 
 
