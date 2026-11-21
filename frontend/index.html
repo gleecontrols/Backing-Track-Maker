@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano Backing Tracks</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230b1f3a%27/%3E%3Crect x=%277%27 y=%278%27 width=%274%27 height=%2716%27 fill=%27white%27/%3E%3Crect x=%2714%27 y=%278%27 width=%274%27 height=%2716%27 fill=%27white%27/%3E%3Crect x=%2721%27 y=%278%27 width=%274%27 height=%2716%27 fill=%27white%27/%3E%3C/svg%3E">
+<style>
+:root{
+  --navy:#0b1f3a; --navy-2:#173561; --blue:#2e5aac; --blue-soft:#e8eef9; --ink:#14213a; --muted:#5b6b86;
+  --line:#dfe5f0; --bg:#f5f7fb; --card:#ffffff; --amber:#b86e00; --amber-soft:#fff4e0; --ok:#157347; --bad:#b42318; --bad-soft:#fdecea;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{background:var(--navy);color:#fff}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:.2px;font-size:18px}
+.brand small{font-weight:400;opacity:.7;margin-left:8px;font-size:13px}
+nav{display:flex;gap:4px}
+nav button{background:transparent;color:#cfd9ee;border:0;padding:8px 14px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer}
+nav button[aria-selected=true]{background:#fff;color:var(--navy);font-weight:600}
+main{padding:20px 0 80px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 2px;font-size:17px;color:var(--navy)}
+.card .sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+.step{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;margin-right:8px;vertical-align:1px}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:0 0 4px}
+input[type=text],input[type=number],select{width:100%;padding:11px 12px;border:1px solid #c9d3e6;border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.drop{border:2px dashed #b9c6e0;border-radius:12px;padding:18px;text-align:center;color:var(--muted);cursor:pointer;margin-top:12px;background:#fafbfe}
+.drop.over{border-color:var(--blue);background:var(--blue-soft)}
+.drop strong{color:var(--navy)}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:14px;color:var(--muted)}
+.check input{margin-top:4px;width:18px;height:18px;flex:none}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:11px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center}
+.btn:hover{background:var(--navy-2)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--navy);border:1px solid #c9d3e6}
+.btn.ghost:hover{background:var(--blue-soft)}
+.btn.attn{box-shadow:0 0 0 3px #c9d8f5}
+.btn.small{padding:8px 12px;font-size:14px;font-weight:500}
+.btn.block{width:100%}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+.ghost .spin{border-color:#c9d3e6;border-top-color:var(--navy)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.notice{padding:12px 14px;border-radius:10px;font-size:14px;margin:12px 0;border:1px solid}
+.notice.info{background:var(--blue-soft);border-color:#c9d8f5;color:var(--navy)}
+.notice.warn{background:var(--amber-soft);border-color:#f3d9a8;color:#7a4a00}
+.notice.err{background:var(--bad-soft);border-color:#f3c1bc;color:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fafbfe}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font-size:20px;font-weight:700;color:var(--navy);margin:2px 0 4px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}
+.badge.det{background:var(--navy);color:#fff}
+.badge.est{background:var(--amber-soft);color:var(--amber);border:1px solid #f3d9a8}
+.badge.man{background:#e6f4ec;color:var(--ok);border:1px solid #bfe3cf}
+.secbar{display:flex;height:34px;border-radius:9px;overflow:hidden;margin:14px 0 6px;border:1px solid var(--line)}
+.secbar button{border:0;border-right:1px solid rgba(255,255,255,.6);color:#fff;font:inherit;font-size:12px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 6px;min-width:0}
+.secbar button:last-child{border-right:0}
+.secbar button.on{outline:3px solid #8fb0ec;outline-offset:-3px}
+.k-intro{background:#7d8fb0}.k-verse{background:#2e5aac}.k-chorus{background:#0b1f3a}.k-bridge{background:#5a4a9c}.k-outro{background:#7d8fb0}.k-instrumental{background:#3d7a8a}
+.chordsec{margin-top:14px}
+.chordsec h3{font-size:13px;margin:0 0 6px;color:var(--navy);display:flex;justify-content:space-between}
+.chordsec h3 span{color:var(--muted);font-weight:400}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid #c9d3e6;background:#fff;border-radius:9px;padding:5px 10px;font:inherit;font-weight:600;color:var(--navy);cursor:pointer;min-width:48px;position:relative}
+.chip small{display:block;font-weight:400;font-size:10px;color:var(--muted);line-height:1.1}
+.chip.low{border-style:dashed;border-color:#e0b25a;background:#fffaf0}
+.chip.man{border-color:#6fbf93;background:#f1faf5}
+.chip.now{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.now small{color:#c8d4ec}
+.legend{font-size:12px;color:var(--muted);margin-top:10px}
+.styles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.styles{grid-template-columns:repeat(2,1fr)}}
+.style{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;cursor:pointer;font:inherit;color:var(--ink)}
+.style b{display:block;color:var(--navy);font-size:14px}
+.style span{font-size:12px;color:var(--muted)}
+.style[aria-pressed=true]{border-color:var(--navy);background:var(--blue-soft)}
+.seg{display:inline-flex;border:1px solid #c9d3e6;border-radius:10px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:9px 16px;font:inherit;cursor:pointer;color:var(--navy)}
+.seg button+button{border-left:1px solid #c9d3e6}
+.seg button[aria-pressed=true]{background:var(--navy);color:#fff}
+.sliders{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-top:14px}
+@media(max-width:640px){.sliders{grid-template-columns:1fr}}
+.sl label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--navy)}
+.sl label span{font-weight:400;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--navy)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.stepper{display:inline-flex;align-items:center;border:1px solid #c9d3e6;border-radius:10px;overflow:hidden}
+.stepper button{border:0;background:#fff;width:40px;height:40px;font-size:18px;cursor:pointer;color:var(--navy)}
+.stepper output{min-width:120px;text-align:center;font-weight:600;color:var(--navy)}
+.player{background:var(--navy);color:#fff;border-radius:var(--radius);padding:18px}
+.player h2{color:#fff}
+.player .sub{color:#b9c7e4}
+.pc{display:flex;align-items:center;gap:12px;margin:10px 0}
+.pbtn{width:50px;height:50px;border-radius:50%;border:0;background:#fff;color:var(--navy);font-size:20px;cursor:pointer;flex:none}
+.pbtn.sm{width:38px;height:38px;font-size:15px;background:#223f6e;color:#fff}
+.time{font-variant-numeric:tabular-nums;font-size:13px;color:#cfd9ee;min-width:92px;text-align:right}
+.player input[type=range]{accent-color:#8fb0ec}
+.psec{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.psec button{border:1px solid #3a5a91;background:transparent;color:#dbe5f8;border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+.psec button[aria-pressed=true]{background:#fff;color:var(--navy);border-color:#fff}
+.nowline{font-size:14px;color:#cfd9ee;margin-top:10px;min-height:22px}
+.nowline b{color:#fff}
+.dl{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.dl a,.dl button{background:#fff;color:var(--navy);border:0;border-radius:10px;padding:9px 14px;text-decoration:none;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.dl .alt{background:#223f6e;color:#fff}
+.meta{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#b9c7e4;margin-top:6px}
+.small{font-size:13px;color:var(--muted)}
+.player .small{color:#b9c7e4}
+.lib{display:grid;gap:12px}
+.track{display:grid;gap:8px}
+.track h3{margin:0;font-size:16px;color:var(--navy)}
+.track .info{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.track audio{width:100%}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;z-index:50;box-shadow:0 6px 24px rgba(11,31,58,.3)}
+.modal{position:fixed;inset:0;background:rgba(11,31,58,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
+.modal .box{background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%}
+.modal h3{margin:0 0 4px;color:var(--navy)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">Piano Backing Tracks <small>from your own recordings</small></div>
+    <nav role="tablist">
+      <button role="tab" id="tab-create" aria-selected="true">Create</button>
+      <button role="tab" id="tab-library" aria-selected="false">My library</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+<section id="view-create">
+
+  <div class="card" id="c-song">
+    <h2><span class="step">1</span>Your song</h2>
+    <p class="sub">Upload a recording you have permission to use. The piano follows the chords found in that recording.</p>
+    <div class="grid2">
+      <div><label class="f" for="title">Song title</label><input type="text" id="title" placeholder="e.g. Way Maker" autocomplete="off"></div>
+      <div><label class="f" for="artist">Artist or recording</label><input type="text" id="artist" placeholder="e.g. Sinach" autocomplete="off"></div>
+    </div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an audio file">
+      <div id="dropText"><strong>Choose an audio file</strong> or drop it here<br><span class="small">MP3, WAV, M4A, FLAC, OGG, up to 120 MB</span></div>
+      <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.aiff" hidden>
+    </div>
+    <label class="check"><input type="checkbox" id="rights"><span>I own this recording or have permission to process it. This app never downloads music from other sites, and it deletes your upload as soon as analysis finishes.</span></label>
+    <div id="songMsg"></div>
+    <div style="margin-top:14px"><button class="btn" id="analyseBtn">Analyse song</button></div>
+  </div>
+
+  <div id="found" hidden>
+    <div class="card">
+      <h2><span class="step">2</span>What we found</h2>
+      <p class="sub" id="foundSub"></p>
+      <div class="tiles" id="tiles"></div>
+      <div class="secbar" id="secbar"></div>
+      <div id="chordList"></div>
+      <div class="legend">
+        <span class="badge det">Detected</span> measured from the audio &nbsp;
+        <span class="badge est">Estimated</span> a best guess &nbsp;
+        <span class="badge man">Corrected</span> changed by you.<br>
+        Dashed chips are low-confidence. <b>Tap any chord to correct it.</b>
+      </div>
+      <div class="notice warn" id="approxNote">Chord detection from a full band recording is not perfect. Check the chords against what you hear and fix any that are wrong before generating. The result is a piano approximation of the original arrangement, and a different recording of the same song can give different keys, tempos and chords.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span>Piano arrangement</h2>
+      <p class="sub">Ambient Worship Piano is the default.</p>
+      <div class="styles" id="styles"></div>
+      <div class="sliders" style="margin-top:16px">
+        <div class="sl"><label>Key <span id="keyHint"></span></label>
+          <div class="stepper"><button id="trDown" aria-label="Down a semitone">&minus;</button><output id="trOut">Original</output><button id="trUp" aria-label="Up a semitone">+</button></div>
+        </div>
+        <div class="sl"><label for="bpm">Tempo (BPM) <span id="bpmHint"></span></label>
+          <input type="number" id="bpm" min="40" max="220" step="1"></div>
+        <div class="sl"><label for="sustain">Sustain <span id="sustainOut"></span></label>
+          <input type="range" id="sustain" min="0" max="100" value="80"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">4</span>Sound</h2>
+      <p class="sub">Reverb, tone and level can be changed after generating without rebuilding the piano.</p>
+      <div class="seg" id="reverbSeg" role="group" aria-label="Reverb amount">
+        <button data-p="low" aria-pressed="false">Low reverb</button>
+        <button data-p="medium" aria-pressed="false">Medium</button>
+        <button data-p="high" aria-pressed="true">High</button>
+      </div>
+      <div class="sliders" id="fxSliders"></div>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <button class="btn block" id="genBtn" style="font-size:17px;padding:15px">Generate Piano Instrumental</button>
+      <div id="genMsg"></div>
+    </div>
+
+    <div class="player" id="player" hidden>
+      <h2 id="pTitle"></h2>
+      <p class="sub" id="pSub"></p>
+      <audio id="audio" preload="auto"></audio>
+      <div class="pc">
+        <button class="pbtn" id="play" aria-label="Play">&#9654;</button>
+        <button class="pbtn sm" id="restart" aria-label="Restart">&#8634;</button>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Progress" style="flex:1">
+        <div class="time" id="time">0:00 / 0:00</div>
+      </div>
+      <div class="pc" style="margin-top:0">
+        <span class="small" style="min-width:48px">Volume</span>
+        <input type="range" id="vol" min="0" max="100" value="90" style="max-width:200px" aria-label="Player volume">
+        <label class="small" style="margin-left:auto;display:flex;gap:6px;align-items:center"><input type="checkbox" id="loop"> Loop selected section</label>
+      </div>
+      <div class="psec" id="psec"></div>
+      <div class="nowline" id="nowline"></div>
+      <div class="meta" id="pmeta"></div>
+      <div class="dl" id="dl"></div>
+      <p class="small" style="margin-top:12px" id="pnote"></p>
+    </div>
+  </div>
+</section>
+
+<section id="view-library" hidden>
+  <div class="card"><h2>My library</h2><p class="sub">Saved on this device's browser profile. Clearing site data will lose access to these tracks.</p><div class="lib" id="libList"></div></div>
+</section>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="box">
+    <h3>Correct this chord</h3>
+    <p class="small" id="modalSub"></p>
+    <div class="grid2" style="margin-top:10px">
+      <div><label class="f" for="mRoot">Root</label><select id="mRoot"></select></div>
+      <div><label class="f" for="mQual">Type</label><select id="mQual"></select></div>
+    </div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost small" id="mCancel">Cancel</button>
+      <button class="btn small" id="mSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (s) => { s = Math.max(0, s || 0); const m = Math.floor(s / 60); return m + ":" + String(Math.floor(s % 60)).padStart(2, "0"); };
+const SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+const QUAL = { maj:["","major"], min:["m","minor"], "7":["7","dominant 7th"], maj7:["maj7","major 7th"], min7:["m7","minor 7th"], sus4:["sus4","suspended 4th"], sus2:["sus2","suspended 2nd"] };
+const STYLES = [
+  { id:"ambient",   name:"Ambient Worship", d:"Spacious, atmospheric, expressive" },
+  { id:"soft",      name:"Soft",            d:"Gentle, intimate, minimal" },
+  { id:"cinematic", name:"Cinematic",       d:"Emotional, rich, expansive" },
+  { id:"simple",    name:"Simple",          d:"Straightforward chords" },
+];
+const PRESETS = { low:{intensity:.35,decay:2.2,mix:.25}, medium:{intensity:.6,decay:4,mix:.4}, high:{intensity:.85,decay:7,mix:.55} };
+const FX = [
+  { k:"intensity", name:"Reverb intensity", min:0, max:100, f:(v)=>v+"%", to:(v)=>v/100, from:(v)=>Math.round(v*100) },
+  { k:"decay",     name:"Reverb decay",     min:5,  max:120, f:(v)=>(v/10).toFixed(1)+" s", to:(v)=>v/10, from:(v)=>Math.round(v*10) },
+  { k:"mix",       name:"Wet / dry mix",    min:0, max:100, f:(v)=>v+"% wet", to:(v)=>v/100, from:(v)=>Math.round(v*100) },
+  { k:"volume",    name:"Piano volume",     min:5, max:100, f:(v)=>v+"%", to:(v)=>v/100, from:(v)=>Math.round(v*100) },
+  { k:"width",     name:"Stereo width",     min:0, max:200, f:(v)=>v+"%", to:(v)=>v/100, from:(v)=>Math.round(v*100) },
+  { k:"tone",      name:"Piano tone",       min:-100, max:100, f:(v)=>v<-15?"warm":v>15?"bright":"balanced", to:(v)=>v/100, from:(v)=>Math.round(v*100) },
+];
+
+const S = {
+  job: null, result: null, dirty: false,
+  style: "ambient", transpose: 0, bpm: null, sustain: 0.8,
+  fx: { ...PRESETS.high, volume: 0.9, width: 1.15, tone: -0.15 }, preset: "high",
+  section: null, editing: null, busy: false,
+};
+const cid = (() => { let c = localStorage.getItem("pbt-client"); if (!c) { c = crypto.randomUUID(); localStorage.setItem("pbt-client", c); } return c; })();
+
+function toast(msg, ms = 2600) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), ms); }
+function notice(el, kind, html) { el.innerHTML = html ? `<div class="notice ${kind}">${html}</div>` : ""; }
+function busy(btn, on, label) {
+  if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spin"></span>${esc(label)}`; }
+  else { btn.disabled = false; btn.innerHTML = btn.dataset.label || btn.innerHTML; }
+}
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "X-Client-Id": cid, ...(opts.body && !(opts.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), ...(opts.headers || {}) } });
+  let data = null; try { data = await r.json(); } catch (e) { /* empty */ }
+  if (!r.ok) throw new Error((data && data.detail) ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : `Request failed (${r.status})`);
+  return data;
+}
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  $("view-create").hidden = name !== "create"; $("view-library").hidden = name !== "library";
+  $("tab-create").setAttribute("aria-selected", name === "create"); $("tab-library").setAttribute("aria-selected", name === "library");
+  if (name === "library") loadLibrary(); else $("audio").pause();
+}
+$("tab-create").onclick = () => showTab("create"); $("tab-library").onclick = () => showTab("library");
+
+/* ---------- step 1: upload + analyse ---------- */
+let file = null;
+const drop = $("drop");
+function setFile(f) { file = f; $("dropText").innerHTML = f ? `<strong>${esc(f.name)}</strong><br><span class="small">${(f.size/1048576).toFixed(1)} MB. Click to change.</span>` : `<strong>Choose an audio file</strong> or drop it here<br><span class="small">MP3, WAV, M4A, FLAC, OGG, up to 120 MB</span>`; }
+drop.onclick = () => $("file").click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
+$("file").onchange = (e) => { if (e.target.files[0]) setFile(e.target.files[0]); };
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+$("analyseBtn").onclick = async () => {
+  const msg = $("songMsg"); notice(msg, "", "");
+  const fd = new FormData();
+  fd.append("title", $("title").value); fd.append("artist", $("artist").value); fd.append("rights", $("rights").checked ? "true" : "false");
+  if (file) fd.append("file", file);
+  const btn = $("analyseBtn"); busy(btn, true, "Analysing, this can take up to a minute");
+  try {
+    const d = await api("/api/analyse", { method: "POST", body: fd });
+    if (d.status === "needs_audio") { notice(msg, "info", esc(d.message)); $("found").hidden = true; return; }
+    loadJob(d);
+  } catch (e) { notice(msg, "err", esc(e.message)); }
+  finally { busy(btn, false); }
+};
+
+function loadJob(d) {
+  S.job = d; S.result = null; S.dirty = false; S.transpose = 0; S.bpm = Math.round(d.bpm.value);
+  $("found").hidden = false; $("player").hidden = true; $("audio").pause(); S.section = null;
+  $("foundSub").textContent = `${d.title} by ${d.artist}`;
+  renderFound(); renderArrangeControls(); updateGenBtn();
+  $("found").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ---------- step 2: detected info ---------- */
+const flatsNow = () => S.job.key.flats;
+const chordName = (c) => (flatsNow() ? FLAT : SHARP)[c.root] + QUAL[c.quality][0];
+function renderFound() {
+  const j = S.job;
+  const badge = (k) => k === "detected" ? '<span class="badge det">Detected</span>' : '<span class="badge est">Estimated</span>';
+  const pct = (x) => Math.round(x * 100) + "% sure";
+  $("tiles").innerHTML = [
+    ["Key", j.key.name, badge(j.key.kind), pct(j.key.confidence)],
+    ["Tempo", j.bpm.value + " BPM", badge(j.bpm.kind), pct(j.bpm.confidence)],
+    ["Time signature", j.time_signature.value, badge(j.time_signature.kind), pct(j.time_signature.confidence)],
+    ["Length", fmt(j.duration), badge("detected"), j.chords.length + " chords"],
+  ].map(([k, v, b, c]) => `<div class="tile"><div class="k">${k}</div><div class="v">${esc(v)}</div>${b} <span class="small">${c}</span></div>`).join("");
+
+  const total = j.duration;
+  $("secbar").innerHTML = j.sections.map((s, i) =>
+    `<button class="k-${esc(s.kind)}" style="flex:${Math.max(0.5, s.end - s.start)}" title="${esc(s.label)} ${fmt(s.start)}–${fmt(s.end)} (estimated)">${esc(s.label)}</button>`).join("");
+  $("chordList").innerHTML = j.sections.map((s) => {
+    const cs = j.chords.map((c, i) => ({ c, i })).filter(({ c }) => c.start >= s.start - 0.05 && c.start < s.end - 0.05);
+    if (!cs.length) return "";
+    return `<div class="chordsec"><h3>${esc(s.label)} <span>${fmt(s.start)} to ${fmt(s.end)} · section is estimated</span></h3><div class="chips">` +
+      cs.map(({ c, i }) => `<button class="chip ${c.source === "manual" ? "man" : c.confidence < 0.62 ? "low" : ""}" data-i="${i}" data-start="${c.start}" title="${c.source === "manual" ? "Corrected by you" : "Confidence " + Math.round(c.confidence * 100) + "%"}">${esc(chordName(c))}<small>${fmt(c.start)}</small></button>`).join("") +
+      `</div></div>`;
+  }).join("");
+  document.querySelectorAll(".chip").forEach((b) => b.onclick = () => openEditor(+b.dataset.i));
+}
+
+/* chord correction */
+function openEditor(i) {
+  S.editing = i; const c = S.job.chords[i];
+  $("mRoot").innerHTML = (flatsNow() ? FLAT : SHARP).map((n, pc) => `<option value="${pc}">${n}</option>`).join("");
+  $("mQual").innerHTML = Object.entries(QUAL).map(([k, v]) => `<option value="${k}">${v[1]}</option>`).join("");
+  $("mRoot").value = c.root; $("mQual").value = c.quality;
+  $("modalSub").textContent = `At ${fmt(c.start)}. Detected as ${chordName(c)}.`;
+  $("modal").hidden = false; $("mRoot").focus();
+}
+$("mCancel").onclick = () => $("modal").hidden = true;
+$("modal").onclick = (e) => { if (e.target === $("modal")) $("modal").hidden = true; };
+$("mSave").onclick = async () => {
+  const i = S.editing, root = +$("mRoot").value, q = $("mQual").value;
+  const label = (flatsNow() ? FLAT : SHARP)[root] + QUAL[q][0];
+  const list = S.job.chords.map((c, k) => ({ start: c.start, end: c.end, chord: k === i ? label : c.chord }));
+  try {
+    const r = await api(`/api/jobs/${S.job.job_id}/chords`, { method: "PUT", body: JSON.stringify({ chords: list }) });
+    S.job.chords = r.chords; $("modal").hidden = true; renderFound(); markDirty("Chord changed. Regenerate to hear it."); toast("Chord updated");
+  } catch (e) { toast(e.message, 4000); }
+};
+
+/* ---------- step 3/4: controls ---------- */
+function renderArrangeControls() {
+  $("styles").innerHTML = STYLES.map((s) => `<button class="style" data-id="${s.id}" aria-pressed="${s.id === S.style}"><b>${s.name}</b><span>${s.d}</span></button>`).join("");
+  document.querySelectorAll(".style").forEach((b) => b.onclick = () => { S.style = b.dataset.id; renderArrangeControls(); markDirty(); });
+  const j = S.job;
+  const tonic = (j.key.tonic + S.transpose + 120) % 12;
+  const mode = j.key.mode;
+  const majorTonic = mode === "major" ? tonic : (tonic + 3) % 12;
+  const flats = [5, 10, 3, 8, 1, 6].includes(majorTonic);
+  $("trOut").textContent = S.transpose === 0 ? `Original (${j.key.name})` : `${(flats ? FLAT : SHARP)[tonic]} ${mode} (${S.transpose > 0 ? "+" : ""}${S.transpose})`;
+  $("keyHint").textContent = "";
+  $("bpm").value = S.bpm; $("bpmHint").textContent = `original ${Math.round(j.bpm.value)}`;
+  $("sustain").value = Math.round(S.sustain * 100); $("sustainOut").textContent = Math.round(S.sustain * 100) + "%";
+  document.querySelectorAll("#reverbSeg button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.p === S.preset));
+  $("fxSliders").innerHTML = FX.map((f) => `<div class="sl"><label for="fx-${f.k}">${f.name} <span id="fxo-${f.k}"></span></label><input type="range" id="fx-${f.k}" min="${f.min}" max="${f.max}"></div>`).join("");
+  FX.forEach((f) => {
+    const el = $("fx-" + f.k); el.value = f.from(S.fx[f.k]); $("fxo-" + f.k).textContent = f.f(+el.value);
+    el.oninput = () => { S.fx[f.k] = f.to(+el.value); $("fxo-" + f.k).textContent = f.f(+el.value); S.preset = null; document.querySelectorAll("#reverbSeg button").forEach((b) => b.setAttribute("aria-pressed", "false")); queueMix(); };
+  });
+}
+$("trDown").onclick = () => { if (S.transpose > -12) { S.transpose--; renderArrangeControls(); markDirty(); } };
+$("trUp").onclick = () => { if (S.transpose < 12) { S.transpose++; renderArrangeControls(); markDirty(); } };
+$("bpm").onchange = () => { let v = Math.round(+$("bpm").value); if (!(v >= 40 && v <= 220)) v = Math.round(S.job.bpm.value); S.bpm = v; $("bpm").value = v; markDirty(); };
+$("sustain").oninput = () => { S.sustain = $("sustain").value / 100; $("sustainOut").textContent = $("sustain").value + "%"; markDirty(); };
+document.querySelectorAll("#reverbSeg button").forEach((b) => b.onclick = () => {
+  S.preset = b.dataset.p; Object.assign(S.fx, PRESETS[S.preset]); renderArrangeControls(); queueMix();
+});
+
+function markDirty(msg) { if (S.result) { S.dirty = true; updateGenBtn(); if (msg) notice($("genMsg"), "info", msg); } }
+function updateGenBtn() {
+  const b = $("genBtn"); b.innerHTML = S.result ? "Regenerate piano arrangement" : "Generate Piano Instrumental";
+  b.classList.toggle("attn", S.dirty);
+}
+
+/* ---------- generate / mix ---------- */
+const fxPayload = () => ({ intensity: S.fx.intensity, decay: S.fx.decay, mix: S.fx.mix, volume: S.fx.volume, width: S.fx.width, tone: S.fx.tone });
+$("genBtn").onclick = async () => {
+  const btn = $("genBtn"); notice($("genMsg"), "", ""); busy(btn, true, "Playing the piano…");
+  try {
+    const bpmBody = Math.abs(S.bpm - S.job.bpm.value) < 0.5 ? null : S.bpm;
+    const r = await api(`/api/jobs/${S.job.job_id}/generate`, { method: "POST", body: JSON.stringify({ style: S.style, transpose: S.transpose, bpm: bpmBody, sustain: S.sustain, fx: fxPayload() }) });
+    S.dirty = false; showResult(r, false);
+    $("player").hidden = false; $("player").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { notice($("genMsg"), "err", esc(e.message)); }
+  finally { busy(btn, false); updateGenBtn(); }
+};
+
+let mixTimer = null, mixSeq = 0;
+function queueMix() {
+  if (!S.result) return;
+  clearTimeout(mixTimer);
+  mixTimer = setTimeout(async () => {
+    const my = ++mixSeq;
+    try {
+      const r = await api(`/api/jobs/${S.job.job_id}/mix`, { method: "POST", body: JSON.stringify(fxPayload()) });
+      if (my === mixSeq) showResult(r, true);
+    } catch (e) { toast(e.message, 4000); }
+  }, 500);
+}
+
+/* ---------- player ---------- */
+const A = $("audio");
+function showResult(r, keepPosition) {
+  const wasPlaying = !A.paused, pos = A.currentTime;
+  S.result = r;
+  const base = `/api/jobs/${r.job_id}/file`;
+  A.src = `${base}/mp3?v=${r.version}`;
+  A.volume = $("vol").value / 100;
+  A.onloadedmetadata = () => { if (keepPosition && pos < A.duration) A.currentTime = pos; if (wasPlaying && keepPosition) A.play(); updateTime(); };
+  A.load();
+  $("pTitle").textContent = `${S.job.title}: ${r.style_name}`;
+  $("pSub").textContent = `by ${S.job.artist}`;
+  $("pmeta").innerHTML = `<span>Key: <b>${esc(r.key)}</b></span><span>Tempo: <b>${r.bpm} BPM</b></span><span>Length: <b>${fmt(r.duration)}</b></span><span>Peak: ${r.report.peak_dbfs} dBFS, no clipping</span>`;
+  $("pnote").textContent = r.approximation_note + " Piano only: no drums, vocals or bass guitar.";
+  $("dl").innerHTML = `<a href="${base}/mp3?dl=1&v=${r.version}">Download MP3</a><a href="${base}/wav?dl=1&v=${r.version}">Download WAV</a><a class="alt" href="${base}/mid?dl=1&v=${r.version}">Download MIDI</a><button class="alt" id="saveLib">Save to library</button>`;
+  $("saveLib").onclick = saveToLibrary;
+  renderPsec(); S.k = S.job.bpm.value / r.bpm; setPlayIcon(); updateGenBtn();
+}
+function renderPsec() {
+  const r = S.result;
+  $("psec").innerHTML = `<button data-i="-1" aria-pressed="${S.section === null}">Full track</button>` +
+    r.sections.map((s, i) => `<button data-i="${i}" aria-pressed="${S.section === i}">${esc(s.label)} <span style="opacity:.7">${fmt(s.start)}</span></button>`).join("");
+  document.querySelectorAll("#psec button").forEach((b) => b.onclick = () => {
+    const i = +b.dataset.i; S.section = i < 0 ? null : i; renderPsec();
+    if (S.section !== null) { A.currentTime = r.sections[i].start; A.play(); }
+  });
+}
+function setPlayIcon() { $("play").innerHTML = A.paused ? "&#9654;" : "&#10074;&#10074;"; $("play").setAttribute("aria-label", A.paused ? "Play" : "Pause"); }
+function updateTime() {
+  const d = A.duration || (S.result ? S.result.duration : 0);
+  $("time").textContent = `${fmt(A.currentTime)} / ${fmt(d)}`;
+  if (!seeking) $("seek").value = d ? Math.round((A.currentTime / d) * 1000) : 0;
+  if (S.result) {
+    const k = S.job.bpm.value / S.result.bpm, t = A.currentTime;
+    let idx = -1; S.job.chords.forEach((c, i) => { if (t >= c.start / k - 0.05) idx = i; });
+    const names = S.result.chord_names;
+    $("nowline").innerHTML = idx >= 0 && !A.paused ? `Now playing <b>${esc(names[idx])}</b>${names[idx + 1] ? ` then ${esc(names[idx + 1])}` : ""}` : "";
+  }
+}
+let seeking = false;
+$("play").onclick = () => { if (A.paused) { if (S.section !== null && A.currentTime >= S.result.sections[S.section].end - 0.1) A.currentTime = S.result.sections[S.section].start; A.play(); } else A.pause(); };
+$("restart").onclick = () => { A.currentTime = S.section !== null ? S.result.sections[S.section].start : 0; A.play(); };
+$("seek").oninput = () => { seeking = true; const d = A.duration || 0; $("time").textContent = `${fmt(($("seek").value / 1000) * d)} / ${fmt(d)}`; };
+$("seek").onchange = () => { A.currentTime = ($("seek").value / 1000) * (A.duration || 0); seeking = false; };
+$("vol").oninput = () => { A.volume = $("vol").value / 100; };
+A.onplay = A.onpause = A.onended = setPlayIcon;
+A.ontimeupdate = () => {
+  updateTime();
+  if (S.section !== null && S.result) {
+    const s = S.result.sections[S.section];
+    if (A.currentTime >= s.end - 0.04) { if ($("loop").checked) A.currentTime = s.start; else { A.pause(); A.currentTime = s.end - 0.05; } }
+    else if (A.currentTime < s.start - 0.2) A.currentTime = s.start;
+  } else if (S.section === null && $("loop").checked && false) { /* loop applies to a selected section only */ }
+};
+
+/* ---------- library ---------- */
+async function saveToLibrary() {
+  try { await api("/api/library", { method: "POST", body: JSON.stringify({ job_id: S.job.job_id }) }); toast("Saved to your library"); }
+  catch (e) { toast(e.message, 4000); }
+}
+async function loadLibrary() {
+  const box = $("libList"); box.innerHTML = '<p class="small">Loading…</p>';
+  try {
+    const { tracks } = await api("/api/library");
+    if (!tracks.length) { box.innerHTML = '<p class="small">Nothing saved yet. Generate a track and choose “Save to library”.</p>'; return; }
+    box.innerHTML = tracks.map((t) => {
+      const u = (f, dl) => `/api/library/${t.id}/file/${f}?cid=${cid}${dl ? "&dl=1" : ""}`;
+      return `<div class="card track" style="margin:0"><h3>${esc(t.title)} <span class="small">by ${esc(t.artist)}</span></h3>
+        <div class="info"><span>Key ${esc(t.key)}</span><span>${t.bpm} BPM</span><span>${fmt(t.duration)}</span><span>${esc(t.style)}</span><span>${new Date(t.created).toLocaleString()}</span></div>
+        <audio controls preload="none" src="${u("mp3")}"></audio>
+        <div class="row"><a class="btn ghost small" href="${u("mp3", 1)}">MP3</a><a class="btn ghost small" href="${u("wav", 1)}">WAV</a><a class="btn ghost small" href="${u("mid", 1)}">MIDI</a>
+        <button class="btn ghost small" data-del="${t.id}" style="margin-left:auto">Delete</button></div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Delete this track?")) return;
+      try { await api(`/api/library/${b.dataset.del}`, { method: "DELETE" }); loadLibrary(); } catch (e) { toast(e.message); }
+    });
+  } catch (e) { box.innerHTML = `<div class="notice err">${esc(e.message)}</div>`; }
+}
+</script>
+</body>
+</html>
