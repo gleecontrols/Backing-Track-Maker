@@ -261,6 +261,17 @@ def _finish(job_id: str, meta: dict, dry: np.ndarray, fx: render.FxParams, info:
 
 @app.post("/api/jobs/{job_id}/generate")
 def generate(job_id: str, body: GenerateBody):
+    try:
+        return _generate(job_id, body)
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - show the real reason instead of a bare 500
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Could not build the piano track: {type(e).__name__}: {e}")
+
+
+def _generate(job_id: str, body: GenerateBody):
     meta = load_meta(job_id)
     if body.style not in arrange.STYLES:
         raise HTTPException(422, "Unknown arrangement style.")
