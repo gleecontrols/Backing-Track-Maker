@@ -122,6 +122,7 @@ class GenerateBody(BaseModel):
     transpose: int = Field(0, ge=-12, le=12)
     bpm: float | None = Field(None, ge=40, le=220)
     sustain: float = Field(0.8, ge=0, le=1)
+    beat_scale: float = Field(1.0)          # 0.5 = half-time feel, 2 = double-time feel
     fx: FxBody = FxBody()
 
 
@@ -230,6 +231,7 @@ def _dry_key(meta: dict, body: GenerateBody) -> str:
         "s": [(s["start"], s["end"], s["kind"]) for s in a["sections"]],
         "bpm": a["bpm"]["value"], "style": body.style, "tr": body.transpose, "tb": body.bpm,
         "sus": round(body.sustain, 3), "sf": render.find_soundfont().name,
+        "bs": body.beat_scale, "beats": hashlib.sha1(json.dumps(a.get("beats", [])).encode()).hexdigest()[:8],
     }, sort_keys=True)
     return hashlib.sha1(blob.encode()).hexdigest()[:16]
 
@@ -251,6 +253,7 @@ def _finish(job_id: str, meta: dict, dry: np.ndarray, fx: render.FxParams, info:
         "key": out_key, "bpm": info["tempo"], "duration": report["duration"], "style": body.style,
         "style_name": arrange.STYLES[body.style], "sections": info["sections"],
         "chord_names": names, "report": report,
+        "tempo_follows_original": True,
         "approximation_note": "This is a piano approximation of the original arrangement.",
         "fx": fx.__dict__,
     }
@@ -280,11 +283,13 @@ def _generate(job_id: str, body: GenerateBody):
     try:
         pm, info = arrange.build_midi(
             a["chords"], a["sections"], a["bpm"]["value"], a["beats_per_bar"], a["first_beat"],
-            arrange.ArrangeParams(style=body.style, transpose=body.transpose, target_bpm=body.bpm, sustain=body.sustain),
+            arrange.ArrangeParams(style=body.style, transpose=body.transpose, target_bpm=body.bpm, sustain=body.sustain,
+                                  beat_scale=body.beat_scale if body.beat_scale in (0.5, 1.0, 2.0) else 1.0),
+            beats=a.get("beats"),
         )
     except ValueError as e:
         raise HTTPException(422, str(e))
-    pm.write(str(jd / "final.mid"))
+    arrange.write_midi_with_tempo(pm, info["grid"], info["beats_per_bar"], str(jd / "final.mid"))
 
     key = _dry_key(meta, body)
     dry_path = jd / f"dry_{key}.npy"
