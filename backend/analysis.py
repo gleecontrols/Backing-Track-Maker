@@ -149,7 +149,7 @@ def _triad_family(q: str) -> str:
     return "min" if q in ("min", "min7") else "maj"
 
 
-def _viterbi_chords(beat_chroma: np.ndarray, key: dict | None = None) -> tuple[np.ndarray, np.ndarray]:
+def _viterbi_chords(beat_chroma: np.ndarray, key: dict | None = None, stay: float = 0.82) -> tuple[np.ndarray, np.ndarray]:
     """Return (state index per beat, confidence per beat).
 
     Bass notes carry loud overtones (the 5th harmonic is a major third), which
@@ -165,7 +165,7 @@ def _viterbi_chords(beat_chroma: np.ndarray, key: dict | None = None) -> tuple[n
     prob = np.exp(sim * 9.0)
     prob /= prob.sum(axis=0, keepdims=True)
     n = len(TEMPL_NAMES)
-    trans = librosa.sequence.transition_loop(n, 0.82)
+    trans = librosa.sequence.transition_loop(n, stay)
     states = librosa.sequence.viterbi_discriminative(prob, trans)
     cols = np.arange(prob.shape[1])
     chosen = prob[states, cols]
@@ -174,6 +174,88 @@ def _viterbi_chords(beat_chroma: np.ndarray, key: dict | None = None) -> tuple[n
     runner_up = masked.max(axis=0)
     conf = chosen / (chosen + runner_up + 1e-12)   # 0.5 = coin flip, ->1 = clear winner
     return states, conf
+
+
+def fix_beat_levels(bt: np.ndarray) -> np.ndarray:
+    """Repair half/double-speed slips inside a tracked beat grid.
+
+    When a song slows down a lot the tracker can start ticking every half beat, or skip a beat.
+    A sustained run of beats at about half the recent gap is merged back in pairs, and a single
+    gap of about double the recent gap gets a midpoint beat. Steady songs pass through unchanged.
+    """
+    bt = np.asarray(bt, dtype=float)
+    G = np.diff(bt)
+    if len(G) < 8:
+        return bt
+    out = [bt[0]]
+    hist: list[float] = []
+    j = 0
+    n = len(G)
+    merging = False
+    while j < n:
+        ref = float(np.median(hist[-3:])) if len(hist) >= 3 else float(np.median(G[: min(8, n)]))
+        g = G[j]
+        need = 2 if merging else 4
+        half_run = j + need <= n and all(0.38 < G[j + k] / ref < 0.64 for k in range(need))
+        if half_run and j + 1 < n:
+            gap = G[j] + G[j + 1]
+            out.append(out[-1] + gap); hist.append(gap); j += 2; merging = True
+            continue
+        merging = False
+        if len(hist) >= 3 and 1.75 < g / ref < 2.25:       # one missed beat
+            half = g / 2
+            out += [out[-1] + half, out[-1] + g]; hist += [half, half]
+        else:
+            out.append(out[-1] + g); hist.append(g)
+        j += 1
+    return np.array(out)
+
+
+def tempo_map(beat_times: np.ndarray) -> dict:
+    """Describe how the speed changes through the song, from the actual beat positions.
+
+    Returns the average BPM, a list of steady stretches ("segments") and whether the tempo
+    varies enough to matter (more than about 8% between slowest and fastest stretch).
+    """
+    from scipy.ndimage import median_filter
+
+    gaps = np.diff(beat_times)
+    gaps = np.clip(gaps, 60 / 260, 60 / 35)
+    local = 60.0 / gaps                                  # BPM between each pair of beats
+    smooth = median_filter(local, size=9, mode="nearest")
+    n = len(smooth)
+    average = 60.0 * (len(beat_times) - 1) / max(1e-6, beat_times[-1] - beat_times[0])
+
+    # Split into stretches: a stretch ends when the (smoothed) tempo drifts more than 5% from where it began.
+    bounds = [0]
+    ref = float(np.median(smooth[: min(4, n)]))
+    for i in range(1, n):
+        if abs(smooth[i] - ref) / ref > 0.05:
+            bounds.append(i)
+            ref = float(np.median(smooth[i: i + 4]))
+    bounds.append(n)
+    segs = []
+    for a, b in zip(bounds[:-1], bounds[1:]):
+        if b - a < 6 and segs:                            # too short to be real: absorb into the previous
+            segs[-1]["b"] = b
+            continue
+        segs.append({"a": a, "b": b})
+    out = []
+    for sg in segs:
+        a, b = sg["a"], sg["b"]
+        out.append({
+            "start": round(float(beat_times[a]), 2),
+            "end": round(float(beat_times[min(b, len(beat_times) - 1)]), 2),
+            "bpm": round(float(np.median(local[a:b])), 1),
+        })
+    out[0]["start"] = 0.0
+    bpms = [s["bpm"] for s in out]
+    varies = max(bpms) / min(bpms) > 1.08
+    # confidence: how steady beats are around their own local tempo (not around one global tempo)
+    resid = np.abs(local - smooth) / smooth
+    conf = float(np.clip(1.0 - np.median(resid) * 6 - float(np.percentile(resid, 90)) * 1.5, 0.2, 0.95))
+    return {"average_bpm": round(average, 1), "segments": out, "varies": bool(varies), "confidence": round(conf, 2),
+            "min_bpm": round(min(bpms), 1), "max_bpm": round(max(bpms), 1)}
 
 
 def analyse(audio_path: Path, work_dir: Path) -> dict:
@@ -190,27 +272,19 @@ def analyse(audio_path: Path, work_dir: Path) -> dict:
 
     # --- tempo and beats (percussive part is steadier) ---
     onset_env = librosa.onset.onset_strength(y=y_p + 0.3 * y_h, sr=sr, hop_length=HOP)
-    tempo, beat_frames = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr, hop_length=HOP, tightness=120)
-    tempo = float(np.atleast_1d(tempo)[0])
-    # fold into a musically sensible range (counts half/double-time confusion)
-    while tempo < 60:
-        tempo *= 2
-    while tempo > 180:
-        tempo /= 2
+    # Start the beat search from a tempo measured in THIS recording. The library default (120 BPM)
+    # often locks onto hi-hats at double speed. A loose "tightness" lets the beat grid follow a
+    # band that pushes and pulls instead of forcing one steady tempo across the whole song.
+    start_bpm = float(np.atleast_1d(librosa.feature.tempo(onset_envelope=onset_env, sr=sr, hop_length=HOP, start_bpm=95))[0])
+    _, beat_frames = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr, hop_length=HOP, start_bpm=start_bpm, tightness=25)
     beat_frames = np.asarray(beat_frames)
     if len(beat_frames) < 8:
         raise ValueError("Could not find a steady beat in that recording.")
-    beat_times = librosa.frames_to_time(beat_frames, sr=sr, hop_length=HOP)
-    # use the median beat gap for the BPM (more stable than the global estimate)
-    med_gap = float(np.median(np.diff(beat_times)))
-    bpm_from_beats = 60.0 / med_gap
-    while bpm_from_beats < 60:
-        bpm_from_beats *= 2
-    while bpm_from_beats > 180:
-        bpm_from_beats /= 2
-    jitter = float(np.std(np.diff(beat_times)) / med_gap)
-    bpm = round(bpm_from_beats, 1)
-    bpm_conf = float(np.clip(1.0 - jitter * 3, 0.2, 0.95))
+    beat_times = fix_beat_levels(librosa.frames_to_time(beat_frames, sr=sr, hop_length=HOP))
+    beat_frames = np.round(beat_times * sr / HOP).astype(int)
+    tmap = tempo_map(beat_times)
+    bpm = tmap["average_bpm"]
+    bpm_conf = tmap["confidence"]
 
     # --- chroma ---
     chroma = librosa.feature.chroma_cqt(y=y_h, sr=sr, hop_length=HOP, n_chroma=12, bins_per_octave=36)
@@ -228,33 +302,43 @@ def analyse(audio_path: Path, work_dir: Path) -> dict:
     chroma, rms = chroma[:, :n_frames], rms[:n_frames]
     edges = np.unique(np.concatenate([[0], beat_frames]))
     edges = edges[edges < n_frames]
-    beat_chroma = librosa.util.sync(chroma, edges, aggregate=np.median)
-    beat_chroma = beat_chroma / (np.linalg.norm(beat_chroma, axis=0, keepdims=True) + 1e-9)
-    states, conf = _viterbi_chords(beat_chroma, key)
+    # Cut chords on a half-beat grid: a chord change still lands on a grid line when the beat
+    # tracker is half a beat out of phase, or tracking at half speed.
+    mids = (edges[:-1] + edges[1:]) // 2
+    sub = np.unique(np.concatenate([edges, mids]))
+    sub = sub[sub < n_frames]
+    sub_chroma = librosa.util.sync(chroma, sub, aggregate=np.median)
+    sub_chroma = sub_chroma / (np.linalg.norm(sub_chroma, axis=0, keepdims=True) + 1e-9)
+    states, conf = _viterbi_chords(sub_chroma, key, stay=0.9)
+    sub_times = librosa.frames_to_time(np.append(sub, n_frames), sr=sr, hop_length=HOP)
+    sub_times[-1] = duration
     edge_times = librosa.frames_to_time(np.append(edges, n_frames), sr=sr, hop_length=HOP)
     edge_times[-1] = duration
 
-    # --- loudness per beat (dynamics) ---
+    # --- loudness (dynamics): per beat for sections, per half-beat for chords ---
     beat_rms = librosa.util.sync(rms[None, :], edges, aggregate=np.mean)[0]
     lo, hi = np.percentile(beat_rms, 5), np.percentile(beat_rms, 95)
     energy = np.clip((beat_rms - lo) / (hi - lo + 1e-9), 0, 1)
+    sub_rms = librosa.util.sync(rms[None, :], sub, aggregate=np.mean)[0]
+    sub_energy = np.clip((sub_rms - lo) / (hi - lo + 1e-9), 0, 1)
 
     chords = []
     i = 0
-    n_beats = len(states)
-    while i < n_beats:
+    n_sub = len(states)
+    while i < n_sub:
         j = i
-        while j + 1 < n_beats and states[j + 1] == states[i]:
+        while j + 1 < n_sub and states[j + 1] == states[i]:
             j += 1
         root, q, _ = TEMPL_NAMES[states[i]]
         chords.append({
-            "start": round(float(edge_times[i]), 3),
-            "end": round(float(edge_times[j + 1]), 3),
+            "start": round(float(sub_times[i]), 3),
+            "end": round(float(sub_times[j + 1]), 3),
             "chord": chord_label(root, q, flats),
             "root": int(root), "quality": q,
             "confidence": round(float(np.mean(conf[i:j + 1])), 2),
-            "energy": round(float(np.mean(energy[i:j + 1])), 2),
-            "beats": int(j - i + 1),
+            "energy": round(float(np.mean(sub_energy[i:j + 1])), 2),
+            "beats": max(1, int(round((j - i + 1) / 2))),
+            "subbeats": int(j - i + 1),
             "source": "detected",
         })
         i = j + 1
@@ -265,7 +349,11 @@ def analyse(audio_path: Path, work_dir: Path) -> dict:
     return {
         "duration": round(duration, 2),
         "key": {**key, "kind": "detected"},
-        "bpm": {"value": bpm, "confidence": round(bpm_conf, 2), "kind": "detected"},
+        "bpm": {"value": bpm, "confidence": round(bpm_conf, 2), "kind": "detected",
+                "min": tmap["min_bpm"], "max": tmap["max_bpm"]},
+        "tempo_map": tmap["segments"],
+        "tempo_varies": tmap["varies"],
+        "beats": [round(float(t), 3) for t in beat_times],
         "time_signature": {**time_sig, "kind": "estimated"},
         "chords": chords,
         "sections": sections,
@@ -286,10 +374,11 @@ def _clean_chords(chords: list[dict]) -> list[dict]:
         changed = False
         for k in range(1, len(chords) - 1):
             c = chords[k]
-            if c["beats"] <= 1 and c["confidence"] < 0.35:
+            if c.get("subbeats", 2 * c["beats"]) <= 2 and c["confidence"] < 0.35:
                 prev = chords[k - 1]
                 prev["end"] = c["end"]
                 prev["beats"] += c["beats"]
+                prev["subbeats"] = prev.get("subbeats", 0) + c.get("subbeats", 0)
                 del chords[k]
                 changed = True
                 break
@@ -298,6 +387,7 @@ def _clean_chords(chords: list[dict]) -> list[dict]:
             if out and out[-1]["chord"] == c["chord"]:
                 out[-1]["end"] = c["end"]
                 out[-1]["beats"] += c["beats"]
+                out[-1]["subbeats"] = out[-1].get("subbeats", 0) + c.get("subbeats", 0)
                 out[-1]["energy"] = round((out[-1]["energy"] + c["energy"]) / 2, 2)
             else:
                 out.append(c)
@@ -383,27 +473,4 @@ def detect_sections(chroma, y, sr, edges, edge_times, energy, beats_per_bar, dur
     elif len(segs) > 2:
         loudest = max(range(len(segs)), key=lambda i: segs[i]["energy"])
         labels[loudest] = "chorus"
-    for i in range(1, len(segs) - 1):  # a one-off section between others reads as a bridge
-        if labels[i] == "verse" and not any(i in g_ and len(g_) >= 2 for g_ in groups):
-            labels[i] = "bridge"
-    first_len = edge_times[min(segs[0]["b"], len(edge_times) - 1)]
-    if len(segs) >= 3 and labels[0] != "chorus" and first_len < duration * 0.2:
-        labels[0] = "intro"
-    last_len = duration - edge_times[min(segs[-1]["a"], len(edge_times) - 1)]
-    if len(segs) >= 3 and (last_len < duration * 0.13 or (labels[-1] != "chorus" and segs[-1]["energy"] < 0.5)):
-        labels[-1] = "outro"
-
-    counts: dict[str, int] = {}
-    for l in labels:
-        counts[l] = counts.get(l, 0) + 1
-    seen: dict[str, int] = {}
-    out = []
-    for i, s in enumerate(segs):
-        seen[labels[i]] = seen.get(labels[i], 0) + 1
-        name = labels[i].capitalize() + (f" {seen[labels[i]]}" if counts[labels[i]] > 1 else "")
-        t0 = float(edge_times[s["a"]]) if s["a"] > 0 else 0.0
-        t1 = float(edge_times[s["b"]]) if s["b"] < len(edge_times) else duration
-        out.append({"label": name, "kind": labels[i], "start": round(t0, 2), "end": round(min(t1, duration), 2),
-                    "energy": round(s["energy"], 2), "source": "estimated"})
-    out[-1]["end"] = round(duration, 2)
-    return out
+    for i in range(1,
