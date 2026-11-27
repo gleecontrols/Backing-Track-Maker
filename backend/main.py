@@ -399,4 +399,17 @@ def health():
     return {"ok": True, "soundfont": render.find_soundfont().name}
 
 
-app.mount("/", StaticFiles(directory=ROOT / "frontend", html=True), name="frontend")
+# Serve the web page. Normally it is frontend/index.html. If it was uploaded to the repo root by mistake,
+# serve that instead of crashing at startup.
+from fastapi.responses import HTMLResponse
+
+if (ROOT / "frontend" / "index.html").exists():
+    app.mount("/", StaticFiles(directory=ROOT / "frontend", html=True), name="frontend")
+else:
+    @app.get("/", response_class=HTMLResponse)
+    def index_page():
+        for cand in (ROOT / "index.html", ROOT / "frontend" / "index.html"):
+            if cand.exists():
+                return HTMLResponse(cand.read_text(encoding="utf-8"))
+        return HTMLResponse("<h2>The server is running, but index.html was not found in the repository.</h2>"
+                            "<p>Put index.html inside a folder named <b>frontend</b>.</p>", status_code=500)

@@ -473,4 +473,27 @@ def detect_sections(chroma, y, sr, edges, edge_times, energy, beats_per_bar, dur
     elif len(segs) > 2:
         loudest = max(range(len(segs)), key=lambda i: segs[i]["energy"])
         labels[loudest] = "chorus"
-    for i in range(1,
+    for i in range(1, len(segs) - 1):  # a one-off section between others reads as a bridge
+        if labels[i] == "verse" and not any(i in g_ and len(g_) >= 2 for g_ in groups):
+            labels[i] = "bridge"
+    first_len = edge_times[min(segs[0]["b"], len(edge_times) - 1)]
+    if len(segs) >= 3 and labels[0] != "chorus" and first_len < duration * 0.2:
+        labels[0] = "intro"
+    last_len = duration - edge_times[min(segs[-1]["a"], len(edge_times) - 1)]
+    if len(segs) >= 3 and (last_len < duration * 0.13 or (labels[-1] != "chorus" and segs[-1]["energy"] < 0.5)):
+        labels[-1] = "outro"
+
+    counts: dict[str, int] = {}
+    for l in labels:
+        counts[l] = counts.get(l, 0) + 1
+    seen: dict[str, int] = {}
+    out = []
+    for i, s in enumerate(segs):
+        seen[labels[i]] = seen.get(labels[i], 0) + 1
+        name = labels[i].capitalize() + (f" {seen[labels[i]]}" if counts[labels[i]] > 1 else "")
+        t0 = float(edge_times[s["a"]]) if s["a"] > 0 else 0.0
+        t1 = float(edge_times[s["b"]]) if s["b"] < len(edge_times) else duration
+        out.append({"label": name, "kind": labels[i], "start": round(t0, 2), "end": round(min(t1, duration), 2),
+                    "energy": round(s["energy"], 2), "source": "estimated"})
+    out[-1]["end"] = round(duration, 2)
+    return out
